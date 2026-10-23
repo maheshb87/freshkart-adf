@@ -1,0 +1,15 @@
+{
+	"name": "adf-freshkart-dev",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "uksouth",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "5ee7292a-a2ab-4d69-a73e-935d7ae46eaf",
+		"tenantId": "2d7c614f-a6d9-43cb-8ea3-d28d4375b45b"
+	}
+}

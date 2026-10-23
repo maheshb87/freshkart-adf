@@ -1,0 +1,94 @@
+{
+	"name": "df_clean_store_sales",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ds_bronze_store_sales_csv",
+						"type": "DatasetReference"
+					},
+					"name": "srcbronzesales"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ds_silver_sales_parquet",
+						"type": "DatasetReference"
+					},
+					"name": "sinksilver"
+				},
+				{
+					"dataset": {
+						"referenceName": "ds_silver_error_csv",
+						"type": "DatasetReference"
+					},
+					"name": "sinkerror"
+				}
+			],
+			"transformations": [
+				{
+					"name": "dcstandardize"
+				},
+				{
+					"name": "aggdedupe"
+				},
+				{
+					"name": "csvalidate"
+				},
+				{
+					"name": "dcnetamount"
+				},
+				{
+					"name": "dcreason"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          StoreID as string,",
+				"          TransactionID as string,",
+				"          ProductID as string,",
+				"          Quantity as integer,",
+				"          UnitPrice as double,",
+				"          DiscountPct as double,",
+				"          TransactionDate as date 'yyyy-MM-dd',",
+				"          PaymentMode as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false,",
+				"     wildcardPaths:['store_sales/*/*/*/*.csv']) ~> srcbronzesales",
+				"srcbronzesales derive(PaymentMode = upper(trim(PaymentMode)),",
+				"          DiscountPct = iif(isNull(DiscountPct), toDouble(0), toDouble(DiscountPct))) ~> dcstandardize",
+				"dcstandardize aggregate(groupBy(TransactionID),",
+				"     each(match(name!='TransactionID'), $$ = first($$))) ~> aggdedupe",
+				"aggdedupe split(Quantity > 0 && UnitPrice > 0,",
+				"     disjoint: false) ~> csvalidate@(valid, rejected)",
+				"csvalidate@valid derive(NetAmount = round(Quantity * UnitPrice * (1 - DiscountPct / 100), 2)) ~> dcnetamount",
+				"csvalidate@rejected derive(RejectReason = iif(isNull(Quantity) || Quantity <= 0, 'Invalid Quantity', iif(isNull(UnitPrice) || UnitPrice <= 0, 'Invalid UnitPrice', 'Unknown')),",
+				"          RejectedAt = currentUTC()) ~> dcreason",
+				"dcnetamount sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     truncate: true,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sinksilver",
+				"dcreason sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     truncate: true,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     partitionBy('hash', 1)) ~> sinkerror"
+			]
+		}
+	}
+}

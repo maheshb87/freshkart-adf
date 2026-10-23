@@ -1,0 +1,21 @@
+{
+	"name": "ds_gold_daily_store_summary",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_adls_freshkart",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "daily_store_summary",
+				"fileSystem": "gold"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
